@@ -179,3 +179,4 @@ public class DataInitializer implements CommandLineRunner {
         quizRepository.save(quiz2);
     }
 }
+

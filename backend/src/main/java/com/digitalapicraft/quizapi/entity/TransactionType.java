@@ -6,3 +6,4 @@ public enum TransactionType {
     QUIZ_REWARD,
     MOCK_BUY
 }
+

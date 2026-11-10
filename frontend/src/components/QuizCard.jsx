@@ -75,3 +75,4 @@ export default function QuizCard({ quiz, userBalance, onStart, loading }) {
     </div>
   );
 }
+

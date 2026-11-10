@@ -87,3 +87,4 @@ public class WalletServiceConcurrencyTest {
         assertEquals(0L, finalBalance, "Final balance must be exactly 0");
     }
 }
+

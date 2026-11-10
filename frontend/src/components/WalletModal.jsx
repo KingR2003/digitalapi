@@ -195,3 +195,4 @@ export default function WalletModal({ isOpen, onClose, balance, onBalanceUpdate 
     </div>
   );
 }
+

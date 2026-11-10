@@ -125,3 +125,4 @@ export default function ResultModal({ result, onClose }) {
     </div>
   );
 }
+

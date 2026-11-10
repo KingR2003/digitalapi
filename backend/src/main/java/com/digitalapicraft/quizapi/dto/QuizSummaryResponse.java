@@ -108,3 +108,4 @@ public class QuizSummaryResponse {
         this.active = active;
     }
 }
+

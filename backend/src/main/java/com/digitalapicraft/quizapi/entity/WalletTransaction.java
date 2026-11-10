@@ -121,3 +121,4 @@ public class WalletTransaction {
         this.createdAt = createdAt;
     }
 }
+

@@ -13,3 +13,4 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     Page<WalletTransaction> findByWalletUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     List<WalletTransaction> findByWalletUserIdOrderByCreatedAtDesc(Long userId);
 }
+

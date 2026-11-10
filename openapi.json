@@ -1,0 +1,872 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Quiz Application & Credit System REST API",
+    "description": "Production-grade REST API for the DigitalAPICraft Fullstack Developer Interview Assignment. Features JWT Authentication, Role-based Access Control (USER/ADMIN), Pessimistic Database Locking for Credit Wallets, Immutable Audit Ledger, and Quiz Staking Economics.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "DigitalAPICraft Evaluation",
+      "email": "hello@digitalapicraft.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Dev / Docker Server"
+    },
+    {
+      "url": "https://trial.digitalapi.ai",
+      "description": "DigitalAPI Gateway Proxy"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User registration and JWT authentication endpoints"
+    },
+    {
+      "name": "Credit Wallet",
+      "description": "Credit balance inquiry, transaction ledger, and mock credit purchases"
+    },
+    {
+      "name": "Quizzes & Gameplay",
+      "description": "Quiz exploration, credit-staking entry, answer submission, and attempt history"
+    },
+    {
+      "name": "Admin Studio",
+      "description": "Administrator-only management for quizzes and question banks"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "description": "Creates an account, generates a credit wallet with 500 initial bonus credits, and returns a JWT token.",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or email already in use",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate user",
+        "description": "Validates email and password credentials, returning a signed JWT bearer token.",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid email or password credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/balance": {
+      "get": {
+        "tags": ["Credit Wallet"],
+        "summary": "Get user wallet balance",
+        "description": "Retrieves the current available credit balance and ledger verification summary.",
+        "operationId": "getBalance",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current credit balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/transactions": {
+      "get": {
+        "tags": ["Credit Wallet"],
+        "summary": "Get transaction ledger history",
+        "description": "Returns an immutable, paginated audit trail of all credit movements.",
+        "operationId": "getTransactions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (zero-based)",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Number of records per page",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionPageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/mock-buy": {
+      "post": {
+        "tags": ["Credit Wallet"],
+        "summary": "Purchase credits via mock payment",
+        "description": "Top up credit balance with idempotency key protection.",
+        "operationId": "mockBuyCredits",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Unique client-generated UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MockBuyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credits added to wallet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid amount"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes": {
+      "get": {
+        "tags": ["Quizzes & Gameplay"],
+        "summary": "List all active quizzes",
+        "description": "Publicly viewable list of quizzes showing entry stake and rewards.",
+        "operationId": "getActiveQuizzes",
+        "responses": {
+          "200": {
+            "description": "List of available quizzes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuizSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{id}/start": {
+      "post": {
+        "tags": ["Quizzes & Gameplay"],
+        "summary": "Stake credits and start quiz attempt",
+        "description": "Atomically deducts entry stake credits and returns quiz questions without answers.",
+        "operationId": "startQuiz",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attempt started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartQuizResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Insufficient credit balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Quiz not found"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/attempts/{attemptId}/submit": {
+      "post": {
+        "tags": ["Quizzes & Gameplay"],
+        "summary": "Submit quiz answers",
+        "description": "Evaluates submitted answers, updates score, and awards credits if passed.",
+        "operationId": "submitQuiz",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitQuizRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quiz evaluated and credits settled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Attempt already submitted"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/attempts/me": {
+      "get": {
+        "tags": ["Quizzes & Gameplay"],
+        "summary": "Get user attempt history",
+        "description": "Returns history of past attempts with scores and rewards.",
+        "operationId": "getMyAttempts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of user attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttemptHistoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes": {
+      "get": {
+        "tags": ["Admin Studio"],
+        "summary": "Admin quiz list",
+        "operationId": "adminGetAllQuizzes",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of quizzes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuizSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Admin only"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin Studio"],
+        "summary": "Create new quiz",
+        "operationId": "createQuiz",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quiz created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizSummaryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{id}": {
+      "put": {
+        "tags": ["Admin Studio"],
+        "summary": "Update quiz details",
+        "operationId": "updateQuiz",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quiz updated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin Studio"],
+        "summary": "Delete quiz",
+        "operationId": "deleteQuiz",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Quiz deleted"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{id}/questions": {
+      "get": {
+        "tags": ["Admin Studio"],
+        "summary": "Get all questions with correct answers",
+        "operationId": "getAdminQuestions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Questions with answers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminQuestionDto"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin Studio"],
+        "summary": "Add question to quiz",
+        "operationId": "addQuestion",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Question added"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}/questions/{questionId}": {
+      "delete": {
+        "tags": ["Admin Studio"],
+        "summary": "Delete question from quiz",
+        "operationId": "deleteQuestion",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Question removed"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string", "example": "Alex Developer" },
+          "email": { "type": "string", "format": "email", "example": "alex@digitalapi.com" },
+          "password": { "type": "string", "format": "password", "example": "securePass123" }
+        }
+      },
+      "AuthRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "user@digitalapi.com" },
+          "password": { "type": "string", "format": "password", "example": "user123" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "type": { "type": "string", "example": "Bearer" },
+          "userId": { "type": "integer", "example": 2 },
+          "name": { "type": "string", "example": "Demo User" },
+          "email": { "type": "string", "example": "user@digitalapi.com" },
+          "role": { "type": "string", "example": "ROLE_USER" },
+          "credits": { "type": "integer", "example": 500 }
+        }
+      },
+      "WalletResponse": {
+        "type": "object",
+        "properties": {
+          "balance": { "type": "integer", "example": 550 },
+          "walletId": { "type": "integer", "example": 2 },
+          "userId": { "type": "integer", "example": 2 }
+        }
+      },
+      "TransactionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 101 },
+          "amount": { "type": "integer", "example": 100 },
+          "balanceAfter": { "type": "integer", "example": 550 },
+          "type": {
+            "type": "string",
+            "enum": ["SIGNUP_BONUS", "QUIZ_STAKE", "QUIZ_REWARD", "MOCK_BUY", "ADMIN_ADJUSTMENT"],
+            "example": "QUIZ_REWARD"
+          },
+          "description": { "type": "string", "example": "Reward for passing Java Core Fundamentals" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TransactionPageResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TransactionResponse" }
+          },
+          "totalElements": { "type": "integer", "example": 5 },
+          "totalPages": { "type": "integer", "example": 1 }
+        }
+      },
+      "MockBuyRequest": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "amount": { "type": "integer", "minimum": 50, "maximum": 100000, "example": 250 }
+        }
+      },
+      "QuizSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "title": { "type": "string", "example": "Java Core Fundamentals" },
+          "description": { "type": "string", "example": "Core Java knowledge evaluation" },
+          "stakeCredits": { "type": "integer", "example": 50 },
+          "rewardCredits": { "type": "integer", "example": 100 },
+          "passingPercentage": { "type": "integer", "example": 70 },
+          "timeLimitSeconds": { "type": "integer", "example": 300 },
+          "questionCount": { "type": "integer", "example": 5 },
+          "active": { "type": "boolean", "example": true }
+        }
+      },
+      "QuizCreateRequest": {
+        "type": "object",
+        "required": ["title", "description", "stakeCredits", "rewardCredits", "passingPercentage", "timeLimitSeconds"],
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "stakeCredits": { "type": "integer" },
+          "rewardCredits": { "type": "integer" },
+          "passingPercentage": { "type": "integer" },
+          "timeLimitSeconds": { "type": "integer" }
+        }
+      },
+      "QuestionCreateRequest": {
+        "type": "object",
+        "required": ["questionText", "options", "correctOptionIndex"],
+        "properties": {
+          "questionText": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "correctOptionIndex": { "type": "integer" },
+          "explanation": { "type": "string" }
+        }
+      },
+      "QuestionDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "questionText": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "AdminQuestionDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "questionText": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "correctOptionIndex": { "type": "integer" },
+          "explanation": { "type": "string" }
+        }
+      },
+      "StartQuizResponse": {
+        "type": "object",
+        "properties": {
+          "attemptId": { "type": "integer" },
+          "quizId": { "type": "integer" },
+          "quizTitle": { "type": "string" },
+          "stakeCredits": { "type": "integer" },
+          "rewardCredits": { "type": "integer" },
+          "timeLimitSeconds": { "type": "integer" },
+          "questions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QuestionDto" }
+          }
+        }
+      },
+      "SubmitQuizRequest": {
+        "type": "object",
+        "required": ["answers"],
+        "properties": {
+          "answers": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" }
+          }
+        }
+      },
+      "QuestionReviewDto": {
+        "type": "object",
+        "properties": {
+          "questionId": { "type": "integer" },
+          "questionText": { "type": "string" },
+          "options": { "type": "array", "items": { "type": "string" } },
+          "userSelectedOption": { "type": "integer" },
+          "correctOptionIndex": { "type": "integer" },
+          "correct": { "type": "boolean" },
+          "explanation": { "type": "string" }
+        }
+      },
+      "QuizResultResponse": {
+        "type": "object",
+        "properties": {
+          "attemptId": { "type": "integer" },
+          "passed": { "type": "boolean" },
+          "scorePercentage": { "type": "integer" },
+          "totalQuestions": { "type": "integer" },
+          "correctAnswers": { "type": "integer" },
+          "creditsStaked": { "type": "integer" },
+          "creditsWon": { "type": "integer" },
+          "newBalance": { "type": "integer" },
+          "reviews": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QuestionReviewDto" }
+          }
+        }
+      },
+      "AttemptHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "attemptId": { "type": "integer" },
+          "quizTitle": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "scorePercentage": { "type": "integer" },
+          "creditsStaked": { "type": "integer" },
+          "creditsWon": { "type": "integer" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "status": { "type": "integer", "example": 400 },
+          "error": { "type": "string", "example": "Bad Request" },
+          "message": { "type": "string", "example": "Validation or business rule failure" },
+          "path": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+

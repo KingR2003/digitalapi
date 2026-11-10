@@ -40,3 +40,4 @@ public class WalletResponse {
         this.updatedAt = updatedAt;
     }
 }
+

@@ -1,0 +1,808 @@
+openapi: 3.0.3
+info:
+  title: Quiz Application & Credit System REST API
+  description: >
+    Production-grade REST API for the DigitalAPICraft Fullstack Developer Interview Assignment.
+    Features JWT Authentication, Role-based Access Control (USER/ADMIN), Pessimistic Database Locking
+    for Credit Wallets, Immutable Audit Ledger, and Quiz Staking Economics.
+  version: 1.0.0
+  contact:
+    name: DigitalAPICraft Evaluation
+    email: hello@digitalapicraft.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local Docker / Dev Server
+  - url: https://trial.digitalapi.ai
+    description: DigitalAPI Gateway Proxy
+
+tags:
+  - name: Authentication
+    description: User registration and JWT authentication endpoints
+  - name: Credit Wallet
+    description: Credit balance inquiry, transaction ledger, and mock credit purchases
+  - name: Quizzes & Gameplay
+    description: Quiz exploration, credit-staking entry, answer submission, and attempt history
+  - name: Admin Studio
+    description: Administrator-only management for quizzes and question banks
+
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates an account, generates a credit wallet with 500 initial bonus credits, and returns a JWT token.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error or email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Validates email and password credentials, returning a signed JWT bearer token.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid email or password credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/wallet/balance:
+    get:
+      tags:
+        - Credit Wallet
+      summary: Get user wallet balance
+      description: Retrieves the current available credit balance and ledger verification summary.
+      operationId: getBalance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current credit balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '401':
+          description: Unauthorized - missing or invalid JWT
+
+  /api/v1/wallet/transactions:
+    get:
+      tags:
+        - Credit Wallet
+      summary: Get transaction ledger history
+      description: Returns an immutable, paginated audit trail of all credit movements (stakes, rewards, purchases, bonuses).
+      operationId: getTransactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (zero-based)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Number of records per page
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPageResponse'
+        '401':
+          description: Unauthorized
+
+  /api/v1/wallet/mock-buy:
+    post:
+      tags:
+        - Credit Wallet
+      summary: Purchase credits via mock payment
+      description: Top up credit balance. Supports Idempotency-Key header to prevent duplicate charges.
+      operationId: mockBuyCredits
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Unique client-generated UUID for safe retry logic
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MockBuyRequest'
+      responses:
+        '200':
+          description: Credits successfully added to wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '400':
+          description: Invalid amount or payment error
+
+  /api/v1/quizzes:
+    get:
+      tags:
+        - Quizzes & Gameplay
+      summary: List all active quizzes
+      description: Publicly viewable list of quizzes showing entry stake, reward credits, and question counts.
+      operationId: getActiveQuizzes
+      responses:
+        '200':
+          description: List of available quizzes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuizSummaryResponse'
+
+  /api/v1/quizzes/{id}/start:
+    post:
+      tags:
+        - Quizzes & Gameplay
+      summary: Stake credits and start quiz attempt
+      description: Atomically deducts entry stake credits using pessimistic write locking and initiates a timed attempt session.
+      operationId: startQuiz
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Quiz ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Attempt created with randomized question list (without answers)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartQuizResponse'
+        '400':
+          description: Insufficient credit balance or quiz has no questions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Quiz not found
+
+  /api/v1/quizzes/attempts/{attemptId}/submit:
+    post:
+      tags:
+        - Quizzes & Gameplay
+      summary: Submit quiz answers
+      description: Evaluates submitted answers, computes percentage score, updates attempt status, and automatically credits reward if passed.
+      operationId: submitQuiz
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          description: Quiz Attempt ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitQuizRequest'
+      responses:
+        '200':
+          description: Quiz graded and credits settled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizResultResponse'
+        '400':
+          description: Attempt already submitted or invalid payload
+
+  /api/v1/quizzes/attempts/me:
+    get:
+      tags:
+        - Quizzes & Gameplay
+      summary: Get user attempt history
+      description: Returns historical record of all quizzes taken by the authenticated user with score and credit outcomes.
+      operationId: getMyAttempts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of user quiz attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttemptHistoryResponse'
+
+  /api/v1/admin/quizzes:
+    get:
+      tags:
+        - Admin Studio
+      summary: Admin quiz list
+      description: Requires ROLE_ADMIN. Returns all quizzes including inactive ones.
+      operationId: adminGetAllQuizzes
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of quizzes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuizSummaryResponse'
+        '403':
+          description: Forbidden - Admin role required
+    post:
+      tags:
+        - Admin Studio
+      summary: Create new quiz
+      description: Requires ROLE_ADMIN. Configures title, description, stake credits, reward credits, passing percentage, and time limit.
+      operationId: createQuiz
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizCreateRequest'
+      responses:
+        '201':
+          description: Quiz created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizSummaryResponse'
+        '403':
+          description: Forbidden
+
+  /api/v1/admin/quizzes/{id}:
+    put:
+      tags:
+        - Admin Studio
+      summary: Update quiz details
+      description: Requires ROLE_ADMIN.
+      operationId: updateQuiz
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizCreateRequest'
+      responses:
+        '200':
+          description: Quiz updated
+        '403':
+          description: Forbidden
+    delete:
+      tags:
+        - Admin Studio
+      summary: Delete quiz
+      description: Requires ROLE_ADMIN.
+      operationId: deleteQuiz
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Quiz deleted
+        '403':
+          description: Forbidden
+
+  /api/v1/admin/quizzes/{id}/questions:
+    get:
+      tags:
+        - Admin Studio
+      summary: Get all questions with correct answers
+      description: Requires ROLE_ADMIN. Inspect full question pool including the correct option index and explanation.
+      operationId: getAdminQuestions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: List of questions with correct answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminQuestionDto'
+    post:
+      tags:
+        - Admin Studio
+      summary: Add question to quiz
+      description: Requires ROLE_ADMIN.
+      operationId: addQuestion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateRequest'
+      responses:
+        '201':
+          description: Question added
+
+  /api/v1/admin/quizzes/{quizId}/questions/{questionId}:
+    delete:
+      tags:
+        - Admin Studio
+      summary: Delete question from quiz
+      description: Requires ROLE_ADMIN.
+      operationId: deleteQuestion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: quizId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Question removed
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: Alex Developer
+        email:
+          type: string
+          format: email
+          example: alex@digitalapi.com
+        password:
+          type: string
+          format: password
+          example: securePass123
+
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@digitalapi.com
+        password:
+          type: string
+          format: password
+          example: user123
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type:
+          type: string
+          example: Bearer
+        userId:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: Demo User
+        email:
+          type: string
+          example: user@digitalapi.com
+        role:
+          type: string
+          example: ROLE_USER
+        credits:
+          type: integer
+          example: 500
+
+    WalletResponse:
+      type: object
+      properties:
+        balance:
+          type: integer
+          example: 550
+        walletId:
+          type: integer
+          example: 2
+        userId:
+          type: integer
+          example: 2
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        amount:
+          type: integer
+          example: 100
+        balanceAfter:
+          type: integer
+          example: 550
+        type:
+          type: string
+          enum: [SIGNUP_BONUS, QUIZ_STAKE, QUIZ_REWARD, MOCK_BUY, ADMIN_ADJUSTMENT]
+          example: QUIZ_REWARD
+        description:
+          type: string
+          example: Reward for passing Java Core Fundamentals
+        createdAt:
+          type: string
+          format: date-time
+
+    TransactionPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+        totalElements:
+          type: integer
+          example: 5
+        totalPages:
+          type: integer
+          example: 1
+
+    MockBuyRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: integer
+          minimum: 50
+          maximum: 100000
+          example: 250
+
+    QuizSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Java Core Fundamentals
+        description:
+          type: string
+          example: Test your knowledge of Java 17, JVM internals, collections, and OOP.
+        stakeCredits:
+          type: integer
+          example: 50
+        rewardCredits:
+          type: integer
+          example: 100
+        passingPercentage:
+          type: integer
+          example: 70
+        timeLimitSeconds:
+          type: integer
+          example: 300
+        questionCount:
+          type: integer
+          example: 5
+        active:
+          type: boolean
+          example: true
+
+    QuizCreateRequest:
+      type: object
+      required:
+        - title
+        - description
+        - stakeCredits
+        - rewardCredits
+        - passingPercentage
+        - timeLimitSeconds
+      properties:
+        title:
+          type: string
+          example: REST API Architecture & Standards
+        description:
+          type: string
+          example: Assessment of idempotency, HTTP status codes, and rate limiting.
+        stakeCredits:
+          type: integer
+          example: 75
+        rewardCredits:
+          type: integer
+          example: 150
+        passingPercentage:
+          type: integer
+          example: 70
+        timeLimitSeconds:
+          type: integer
+          example: 300
+
+    QuestionCreateRequest:
+      type: object
+      required:
+        - questionText
+        - options
+        - correctOptionIndex
+      properties:
+        questionText:
+          type: string
+          example: Which HTTP status code indicates a conflict in resource state?
+        options:
+          type: array
+          items:
+            type: string
+          example: ["400 Bad Request", "409 Conflict", "422 Unprocessable Entity", "500 Internal Error"]
+        correctOptionIndex:
+          type: integer
+          example: 1
+        explanation:
+          type: string
+          example: 409 Conflict is returned when the request conflicts with current server state.
+
+    QuestionDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        questionText:
+          type: string
+          example: What does an Idempotent HTTP method guarantee?
+        options:
+          type: array
+          items:
+            type: string
+          example: ["Multiple identical requests produce the same side-effect as one", "Zero server execution time", "Requires caching"]
+
+    AdminQuestionDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        questionText:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctOptionIndex:
+          type: integer
+          example: 0
+        explanation:
+          type: string
+
+    StartQuizResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+          example: 42
+        quizId:
+          type: integer
+          example: 1
+        quizTitle:
+          type: string
+          example: Java Core Fundamentals
+        stakeCredits:
+          type: integer
+          example: 50
+        rewardCredits:
+          type: integer
+          example: 100
+        timeLimitSeconds:
+          type: integer
+          example: 300
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionDto'
+
+    SubmitQuizRequest:
+      type: object
+      required:
+        - answers
+      properties:
+        answers:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            "1": 2
+            "2": 0
+            "3": 1
+
+    QuestionReviewDto:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        questionText:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        userSelectedOption:
+          type: integer
+        correctOptionIndex:
+          type: integer
+        correct:
+          type: boolean
+        explanation:
+          type: string
+
+    QuizResultResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+        passed:
+          type: boolean
+          example: true
+        scorePercentage:
+          type: integer
+          example: 80
+        totalQuestions:
+          type: integer
+          example: 5
+        correctAnswers:
+          type: integer
+          example: 4
+        creditsStaked:
+          type: integer
+          example: 50
+        creditsWon:
+          type: integer
+          example: 100
+        newBalance:
+          type: integer
+          example: 550
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionReviewDto'
+
+    AttemptHistoryResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+        quizTitle:
+          type: string
+        passed:
+          type: boolean
+        scorePercentage:
+          type: integer
+        creditsStaked:
+          type: integer
+        creditsWon:
+          type: integer
+        completedAt:
+          type: string
+          format: date-time
+
+    ApiErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Insufficient credits to enter quiz.
+        path:
+          type: string
+          example: /api/v1/quizzes/1/start
+

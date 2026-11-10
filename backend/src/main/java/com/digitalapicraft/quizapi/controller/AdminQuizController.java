@@ -70,3 +70,4 @@ public class AdminQuizController {
         return ResponseEntity.noContent().build();
     }
 }
+

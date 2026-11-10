@@ -77,3 +77,4 @@ public class QuizServiceTest {
         assertEquals(650L, walletService.getBalance(user.getId()));
     }
 }
+

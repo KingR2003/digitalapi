@@ -66,3 +66,4 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.message", is("Invalid email or password")));
     }
 }
+

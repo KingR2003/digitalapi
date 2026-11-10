@@ -109,3 +109,4 @@ export default function Navbar({ user, balance, onOpenWallet, onLogout, onOpenAu
     </header>
   );
 }
+

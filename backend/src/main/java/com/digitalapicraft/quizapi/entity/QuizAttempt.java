@@ -143,3 +143,4 @@ public class QuizAttempt {
         this.completedAt = completedAt;
     }
 }
+

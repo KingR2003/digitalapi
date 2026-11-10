@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://18.61.68.209:8080/api/$1"
+      "destination": "https://not-applicable-test.ft-gateway.digitalapicraft.com/api/$1"
     },
     {
       "source": "/(.*)",
@@ -10,3 +10,4 @@
     }
   ]
 }
+

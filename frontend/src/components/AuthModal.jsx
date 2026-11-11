@@ -174,6 +174,18 @@ export default function AuthModal({ isOpen, mode, onClose, onSuccess }) {
             >
               Demo User (500 Credits)
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('');
+                setPassword('');
+                setActiveTab('login');
+                setError(null);
+              }}
+              className="flex-1 py-1.5 px-2 bg-purple-900/30 hover:bg-purple-800/40 border border-purple-500/30 rounded-lg text-[11px] font-semibold text-purple-300 transition"
+            >
+              Admin Studio (Enter Credentials)
+            </button>
           </div>
         </div>
       </div>

@@ -9,8 +9,8 @@ A fullstack quiz platform where users stake virtual credits to enter timed quizz
 | Service | URL |
 |---------|-----|
 | **Frontend (Vercel)** | [https://digitalapi-phi.vercel.app](https://digitalapi-phi.vercel.app) |
-| **Backend API (AWS)** | `http://18.61.68.209:8080` |
-| **Swagger / OpenAPI Docs** | [http://18.61.68.209:8080/swagger-ui.html](http://18.61.68.209:8080/swagger-ui.html) |
+| **Backend API (AWS)** | `http://18.60.119.139:8080` |
+| **Swagger / OpenAPI Docs** | [http://18.60.119.139:8080/swagger-ui.html](http://18.60.119.139:8080/swagger-ui.html) |
 | **DigitalAPI Gateway** | Published on [trial.digitalapi.ai](https://trial.digitalapi.ai) |
 
 ---
@@ -257,3 +257,4 @@ In a system where users stake credits to enter quizzes, you need to guarantee th
 **5. Atomic Quiz Flow**
 - Starting a quiz: create the attempt record first, then deduct the stake in a single `@Transactional` method. If the deduction fails, the entire transaction (including the attempt creation) rolls back automatically.
 - Submitting a quiz: the attempt is loaded with a pessimistic lock to prevent double-submit. The status is checked and updated atomically within the same transaction.
+

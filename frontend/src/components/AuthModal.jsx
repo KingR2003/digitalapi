@@ -164,7 +164,7 @@ export default function AuthModal({ isOpen, mode, onClose, onSuccess }) {
         {/* Quick Demo Credentials */}
         <div className="mt-6 pt-5 border-t border-slate-800 text-center">
           <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2">
-            Quick Interview Demo Credentials
+            Quick Demo Access
           </p>
           <div className="flex space-x-2">
             <button
@@ -173,13 +173,6 @@ export default function AuthModal({ isOpen, mode, onClose, onSuccess }) {
               className="flex-1 py-1.5 px-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-300 transition"
             >
               Demo User (500 Credits)
-            </button>
-            <button
-              type="button"
-              onClick={() => useDemoAccount('admin@digitalapi.com', 'admin123')}
-              className="flex-1 py-1.5 px-2 bg-purple-900/30 hover:bg-purple-800/40 border border-purple-500/30 rounded-lg text-[11px] font-semibold text-purple-300 transition"
-            >
-              Admin Studio
             </button>
           </div>
         </div>

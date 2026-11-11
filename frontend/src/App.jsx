@@ -65,6 +65,9 @@ export default function App() {
       role: authRes.role,
     });
     setBalance(authRes.creditBalance);
+    if (authRes.role === 'ROLE_ADMIN') {
+      setActiveTab('admin');
+    }
     loadQuizzes();
   };
 

@@ -91,14 +91,21 @@ export default function Navbar({ user, balance, onOpenWallet, onLogout, onOpenAu
           ) : (
             <div className="flex items-center space-x-2">
               <button
+                onClick={() => onOpenAuth('admin')}
+                className="px-3 py-1.5 text-xs font-semibold text-purple-300 hover:text-purple-200 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 rounded-xl flex items-center space-x-1.5 transition"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Studio</span>
+              </button>
+              <button
                 onClick={() => onOpenAuth('login')}
-                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition"
               >
                 Sign In
               </button>
               <button
                 onClick={() => onOpenAuth('register')}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition"
               >
                 Get 500 Credits Free
               </button>
